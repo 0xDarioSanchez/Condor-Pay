@@ -1,6 +1,7 @@
 import React from "react";
 import { Code, Layout, Text } from "@stellar/design-system";
-import { GuessTheNumber } from "../components/GuessTheNumber";
+import { Button } from "@/components/ui/button";
+// import { GuessTheNumber } from "../components/GuessTheNumber";
 
 const Home: React.FC = () => (
   <Layout.Content>
@@ -9,6 +10,7 @@ const Home: React.FC = () => (
         Welcome to your app!
       </Text>
       <Text as="p" size="md">
+        <Button>Hola</Button>
         This is a basic template to get your dapp started with the Stellar
         Design System and Stellar contracts. You can customize it further by
         adding your own contracts, components, and styles.
@@ -56,7 +58,7 @@ const Home: React.FC = () => (
       <Text as="h2" size="lg">
         &lt;GuessTheNumber /&gt;
       </Text>
-      <GuessTheNumber />
+      {/* <GuessTheNumber /> */}
       <Text as="h2" size="lg">
         Interact with wallets
       </Text>
