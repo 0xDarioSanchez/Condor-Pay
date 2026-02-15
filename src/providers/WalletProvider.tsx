@@ -197,5 +197,9 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
     [address, network, networkPassphrase, balances, updateBalances, isPending],
   );
 
-  return <WalletContext value={contextValue}>{children}</WalletContext>;
+  return (
+    <WalletContext.Provider value={contextValue}>
+      {children}
+    </WalletContext.Provider>
+  );
 };

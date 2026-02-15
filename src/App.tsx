@@ -69,8 +69,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import PortalSelect from "./pages/PortalSelect";
 import { PymeLayout } from "./components/front/PymeLayout";
@@ -98,51 +97,42 @@ import PerfilEmpresa from "./pages/empresa/PerfilEmpresa";
 import AyudaEmpresa from "./pages/empresa/AyudaEmpresa";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
-
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/portal" element={<PortalSelect />} />
-          <Route path="/dashboard/pyme" element={<PymeLayout />}>
-            <Route index element={<PymeHome />} />
-            <Route path="subir-factura" element={<SubirFactura />} />
-            <Route path="facturas" element={<MisFacturas />} />
-            <Route path="tracking" element={<Tracking />} />
-            <Route path="off-ramp" element={<OffRamp />} />
-            <Route path="perfil" element={<Perfil />} />
-            <Route path="ayuda" element={<Ayuda />} />
-          </Route>
-          <Route
-            path="/dashboard/inversionista"
-            element={<InversionistaLayout />}
-          >
-            <Route index element={<InversionistaHome />} />
-            <Route path="pool" element={<PoolLiquidez />} />
-            <Route path="portfolio" element={<Portfolio />} />
-            <Route path="rendimientos" element={<Rendimientos />} />
-            <Route path="retiros" element={<Retiros />} />
-            <Route path="perfil" element={<PerfilInversionista />} />
-            <Route path="ayuda" element={<AyudaInversionista />} />
-          </Route>
-          <Route path="/dashboard/empresa" element={<EmpresaLayout />}>
-            <Route index element={<EmpresaHome />} />
-            <Route path="facturas" element={<Facturas />} />
-            <Route path="confirmar" element={<ConfirmarFacturas />} />
-            <Route path="historial" element={<HistorialPagos />} />
-            <Route path="perfil" element={<PerfilEmpresa />} />
-            <Route path="ayuda" element={<AyudaEmpresa />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <TooltipProvider>
+    <Toaster />
+    <Sonner />
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route path="/portal" element={<PortalSelect />} />
+      <Route path="/dashboard/pyme" element={<PymeLayout />}>
+        <Route index element={<PymeHome />} />
+        <Route path="subir-factura" element={<SubirFactura />} />
+        <Route path="facturas" element={<MisFacturas />} />
+        <Route path="tracking" element={<Tracking />} />
+        <Route path="off-ramp" element={<OffRamp />} />
+        <Route path="perfil" element={<Perfil />} />
+        <Route path="ayuda" element={<Ayuda />} />
+      </Route>
+      <Route path="/dashboard/inversionista" element={<InversionistaLayout />}>
+        <Route index element={<InversionistaHome />} />
+        <Route path="pool" element={<PoolLiquidez />} />
+        <Route path="portfolio" element={<Portfolio />} />
+        <Route path="rendimientos" element={<Rendimientos />} />
+        <Route path="retiros" element={<Retiros />} />
+        <Route path="perfil" element={<PerfilInversionista />} />
+        <Route path="ayuda" element={<AyudaInversionista />} />
+      </Route>
+      <Route path="/dashboard/empresa" element={<EmpresaLayout />}>
+        <Route index element={<EmpresaHome />} />
+        <Route path="facturas" element={<Facturas />} />
+        <Route path="confirmar" element={<ConfirmarFacturas />} />
+        <Route path="historial" element={<HistorialPagos />} />
+        <Route path="perfil" element={<PerfilEmpresa />} />
+        <Route path="ayuda" element={<AyudaEmpresa />} />
+      </Route>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </TooltipProvider>
 );
 
 export default App;

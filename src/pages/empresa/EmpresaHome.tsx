@@ -10,6 +10,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { WalletConnect } from "@/components/front/WalletConnect";
 
 const stats = [
   { label: "Facturas Asociadas", value: "47", icon: FileText },
@@ -62,6 +63,7 @@ export default function EmpresaHome() {
             Visualiza, confirma y paga facturas de tus proveedores
           </p>
         </motion.div>
+        <WalletConnect />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
