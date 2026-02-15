@@ -1,6 +1,6 @@
 import { NavLink } from "@/components/front/NavLink";
 import { ThemeToggle } from "@/components/front/ThemeToggle";
-import logo from "@/assets/condorpay-logo.png";
+import logo from "@/assets/condorpay-n.png";
 import {
   LayoutDashboard,
   FileText,
@@ -48,10 +48,10 @@ export function EmpresaSidebar() {
           <img
             src={logo}
             alt="CondorPay"
-            className="h-8 w-8 object-contain shrink-0"
+            className="h-12 w-12 object-contain shrink-0"
           />
           {!collapsed && (
-            <span className="font-display font-bold text-sm text-foreground truncate">
+            <span className="font-display font-bold text-md text-foreground truncate">
               CondorPay
             </span>
           )}

@@ -37,7 +37,11 @@ export function WalletConnect() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
+        <Button
+          size="lg"
+          variant={"outline"}
+          className="gradient-gold text-gold-foreground hover:opacity-90 transition-all gap-2"
+        >
           <Wallet className="h-4 w-4" />
           Conectar Wallet
         </Button>

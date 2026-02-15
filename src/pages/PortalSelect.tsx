@@ -5,7 +5,7 @@ import {
   TrendingUp,
   Factory,
   ArrowRight,
-  Camera,
+  // Camera,
 } from "lucide-react";
 import { Navbar } from "@/components/front/Navbar";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,32 @@ const portals = [
 
 export default function PortalSelect() {
   const [selectedRole, setSelectedRole] = useState<RoleType>(null);
+  console.log("Selected role:", selectedRole);
+  // Haz que se puedan ver los datos de cada formulario para verificar que se están capturando correctamente
+  // const [formData, setFormData] = useState({
+  //   pyme: {
+  //     ruc: "",
+  //     razonSocial: "",
+  //     representanteLegal: "",
+  //     dni: "",
+  //     direccion: "",
+  //   },
+  //   inversionista: {
+  //     dni: "",
+  //     nombreCompleto: "",
+  //     direccion: "",
+  //     selfie: null as File | null,
+  //   },
+  //   empresa: {
+  //     ruc: "",
+  //     razonSocial: "",
+  //     contactoPrincipal: "",
+  //     emailCorporativo: "",
+  //     direccion: "",
+  //   },
+  // });
+
+  // Continua...
 
   return (
     <div className="min-h-screen bg-background">
@@ -127,7 +153,7 @@ export default function PortalSelect() {
                     <h3 className="font-display font-bold text-xl">
                       Registro PyME
                     </h3>
-                    <Badge variant="secondary">Paso 1 de 2</Badge>
+                    <Badge variant="secondary">Paso 1 de 1</Badge>
                   </div>
                   <Progress value={100} className="h-1.5 mb-8" />
                   <div className="space-y-5">
@@ -188,9 +214,9 @@ export default function PortalSelect() {
                     <h3 className="font-display font-bold text-xl">
                       Registro Inversionista
                     </h3>
-                    <Badge variant="secondary">Verificación KYC</Badge>
+                    {/* <Badge variant="secondary">Verificación KYC</Badge> */}
                   </div>
-                  <Progress value={33} className="h-1.5 mb-8" />
+                  <Progress value={100} className="h-1.5 mb-8" />
                   <div className="space-y-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -216,7 +242,7 @@ export default function PortalSelect() {
                         className="mt-1.5"
                       />
                     </div>
-                    <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
+                    {/* <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
                       <Camera className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                       <p className="font-medium text-sm mb-1">
                         Selfie con documento
@@ -224,10 +250,10 @@ export default function PortalSelect() {
                       <p className="text-xs text-muted-foreground mb-3">
                         Verificación facial requerida
                       </p>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" >
                         Subir foto
                       </Button>
-                    </div>
+                    </div> */}
                     <div className="flex gap-3 pt-2">
                       <Link to="/dashboard/inversionista" className="flex-1">
                         <Button className="w-full gradient-gold text-gold-foreground font-semibold gap-2 rounded-full">
@@ -254,7 +280,7 @@ export default function PortalSelect() {
                     </h3>
                     <Badge variant="secondary">Datos corporativos</Badge>
                   </div>
-                  <Progress value={50} className="h-1.5 mb-8" />
+                  <Progress value={100} className="h-1.5 mb-8" />
                   <div className="space-y-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>

@@ -1,7 +1,18 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/front/Navbar";
-import { FileText, CheckCircle, DollarSign, Zap } from "lucide-react";
+import {
+  FileText,
+  CheckCircle,
+  DollarSign,
+  Zap,
+  Clock,
+  ArrowRight,
+  Wallet,
+  Globe,
+  BarChart3,
+  Shield,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Accordion,
@@ -9,6 +20,31 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import logo from "@/assets/condorpay-n.png";
+import heroBg from "@/assets/hero-bg.jpg";
+
+const features = [
+  {
+    icon: Zap,
+    title: "Liquidez en < 24h",
+    desc: "Convierte tus facturas en USDC de forma inmediata",
+  },
+  {
+    icon: Shield,
+    title: "Blockchain Stellar",
+    desc: "Tokenización segura y transparente en la red Stellar",
+  },
+  {
+    icon: BarChart3,
+    title: "APY Atractivo",
+    desc: "Rendimientos competitivos para inversionistas",
+  },
+  {
+    icon: Globe,
+    title: "Hecho en Perú",
+    desc: "Diseñado para el ecosistema empresarial peruano",
+  },
+];
 
 const steps = [
   {
@@ -62,8 +98,16 @@ export default function Index() {
       <Navbar />
 
       {/* Hero */}
-      <section className="min-h-screen flex items-center justify-center pt-16">
-        <div className="container mx-auto px-4">
+      <section className="relative min-h-screen flex items-center overflow-hidden pt-16">
+        <div className="absolute inset-0">
+          <img
+            src={heroBg}
+            alt=""
+            className="w-full h-full object-cover opacity-20 dark:opacity-30"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background" />
+        </div>
+        <div className="container mx-auto px-4 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -74,9 +118,11 @@ export default function Index() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-border bg-card text-sm text-muted-foreground mb-8"
             >
-              🚀 Protocolo de factoring descentralizado
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-sm text-primary mb-8">
+                <Clock className="h-3.5 w-3.5" />
+                Liquidez en menos de 24 horas
+              </div>
             </motion.div>
             <h1 className="text-6xl md:text-7xl font-d font-bold leading-[1.1] mb-4 tracking-tight">
               CondorPay: El protocolo que redefine el flujo de caja.
@@ -88,23 +134,78 @@ export default function Index() {
             </h2>
 
             <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed">
-              Liquidez inmediata para tu PyME sin esperar 30, 60 o 90 días.
+              Tokeniza tus facturas en Stellar, obtén liquidez instantánea y
+              permite a inversionistas acceder a rendimientos reales.
             </p>
 
-            <Link to="/portal">
-              <Button
-                size="lg"
-                className="gradient-gold text-gold-foreground font-bold text-lg h-14 px-10 rounded-full hover:opacity-90 transition-all hover:scale-105"
-              >
-                Comenzar Gratis
-              </Button>
-            </Link>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link to="/portal">
+                <Button
+                  size="lg"
+                  className="gradient-gold text-gold-foreground font-semibold text-base gap-2 h-12 px-8 hover:opacity-90 transition-all hover:scale-105"
+                >
+                  <Wallet className="h-5 w-5" />
+                  Comenzar ahora
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              <a href="#how">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-12 px-8 text-base transition-all hover:scale-105"
+                >
+                  ¿Cómo funciona?
+                </Button>
+              </a>
+            </div>
           </motion.div>
         </div>
       </section>
 
+      {/* Features */}
+      <section id="features" className="py-24">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl md:text-5xl font-display font-bold mb-4">
+              ¿Por qué <span className="text-gradient-gold">CondorPay</span>?
+            </h2>
+            <p className="text-muted-foreground max-w-lg mx-auto">
+              La plataforma fintech Web3 que conecta PyMEs, inversionistas y
+              empresas del Perú
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {features.map((f, i) => (
+              <motion.div
+                key={f.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="p-6 rounded-2xl border border-border bg-card hover:glow-gold transition-all duration-300"
+              >
+                <div className="w-12 h-12 rounded-xl gradient-gold flex items-center justify-center mb-4">
+                  <f.icon className="h-6 w-6 text-gold-foreground" />
+                </div>
+                <h3 className="font-display font-semibold text-lg mb-2">
+                  {f.title}
+                </h3>
+                <p className="text-muted-foreground text-sm">{f.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* How it works */}
-      <section className="py-32">
+      <section id="how" className="py-32">
         <div className="container mx-auto px-4 max-w-4xl">
           <motion.div
             initial={{ opacity: 0 }}
@@ -153,7 +254,7 @@ export default function Index() {
       </section>
 
       {/* FAQ */}
-      <section className="py-32 bg-card">
+      <section id="faq" className="py-32 bg-card">
         <div className="container mx-auto px-4 max-w-3xl">
           <motion.div
             initial={{ opacity: 0 }}
@@ -205,9 +306,10 @@ export default function Index() {
               <Link to="/portal">
                 <Button
                   size="lg"
-                  className="gradient-gold text-gold-foreground font-bold text-lg h-14 px-10 rounded-full hover:opacity-90 transition-all hover:scale-105"
+                  className="gradient-gold text-gold-foreground hover:bg-background/90 font-semibold h-12 px-8 gap-2 hover:opacity-90 transition-all hover:scale-105 mt-4"
                 >
-                  Comenzar Gratis
+                  Comenzar gratis
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             </div>
@@ -216,9 +318,16 @@ export default function Index() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8">
-        <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <p>© 2025 CondorPay. Hecho con 🇵🇪 en Perú.</p>
+      <footer className="px-20 py-4">
+        <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
+          <Link to="/" className="flex items-center gap-2">
+            <img
+              src={logo}
+              alt="CondorPay"
+              className="h-20 w-20 object-contain"
+            />
+          </Link>
+          <p>© {new Date().getFullYear()} CondorPay. Hecho con 🇵🇪 en Perú.</p>
           <div className="flex gap-6">
             <span>Términos</span>
             <span>Privacidad</span>

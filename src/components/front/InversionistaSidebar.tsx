@@ -1,7 +1,6 @@
 import { NavLink } from "@/components/front/NavLink";
 import { ThemeToggle } from "@/components/front/ThemeToggle";
-import { WalletConnect } from "@/components/front/WalletConnect";
-import logo from "@/assets/condorpay-logo.png";
+import logo from "@/assets/condorpay-n.png";
 import {
   LayoutDashboard,
   Droplets,
@@ -58,15 +57,16 @@ export function InversionistaSidebar() {
         collapsed ? "w-16" : "w-64",
       )}
     >
+      {/* Logo */}
       <div className="flex items-center gap-2 h-16 px-4 border-b border-sidebar-border">
         <Link to="/" className="flex items-center gap-2 min-w-0">
           <img
             src={logo}
             alt="CondorPay"
-            className="h-8 w-8 object-contain shrink-0"
+            className="h-12 w-12 object-contain shrink-0"
           />
           {!collapsed && (
-            <span className="font-display font-bold text-sm text-foreground truncate">
+            <span className="font-display font-bold text-md text-foreground truncate">
               CondorPay
             </span>
           )}
@@ -85,12 +85,6 @@ export function InversionistaSidebar() {
           />
         </Button>
       </div>
-
-      {!collapsed && (
-        <div className="px-3 py-3 border-b border-sidebar-border">
-          <WalletConnect />
-        </div>
-      )}
 
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
         {menuItems.map((item) => (
