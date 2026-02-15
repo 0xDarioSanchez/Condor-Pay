@@ -1,237 +1,165 @@
-use crate::methods::invoice::{claim_reward, execute, proof};
-use crate::methods::{
-    admin::anonymous_voting_setup,
-    balance::{get_balance, redeem},
-    invoice::{create_invoice, create_invoice_demo},
-    initialize::initialize,
-    vote::{build_commitments_from_votes, commit_vote, register_to_vote, reveal_votes, vote},
-};
-use crate::storage::invoice::get_invoice;
-use crate::storage::invoice_status::InvoiceStatus;
-use crate::storage::vote::{
-    AnonymousVoteConfig, VoteAnon, get_anonymous_voting_config as get_anon_config,
-};
-use crate::storage::voter::{get_voter, set_voter};
-use crate::storage::{Invoice, Voter, error::Error};
 use soroban_sdk::{Address, Bytes, BytesN, Env, String, Vec, contract, contractimpl};
 
-pub trait ProtocolContractTrait {
-    fn __constructor(env: Env, admin: Address, token: Address) -> Result<(), Error>;
+use crate::storage::{
+    invoice::{Invoice, get_invoice, set_invoice},
+    invoice_status::InvoiceStatus,
+    borrower::{Borrower, get_borrower, set_borrower},
+    investor::{Investor, get_investor, set_investor},
+    pool::{Pool, get_pool, set_pool},
+    storage::DataKey,
+    error::Error,
+};
 
-    fn new_voter(
-        env: Env,
-        user: Address,
-        // personal_data: Option<String>,
-    ) -> Result<(), Error>;
+use crate::methods::{
+    admin::*,
+    borrower::{register_as_borrower, create_invoice, pay_debt},
+    investor::{register_as_investor, invest_in_pool, claim_reward},
+    invoice::{create_invoice},
+};
 
-    fn get_user(env: Env, user: Address) -> Result<Voter, Error>;
 
-    fn get_invoice(env: Env, invoice_id: u32) -> Result<Invoice, Error>;
 
-    fn anonymous_voting_setup(env: Env, maintainer: Address, project_id: u32, public_key: String);
+pub trait ContractTrait {
 
-    fn get_anonymous_voting_config(env: Env, project_id: u32) -> AnonymousVoteConfig;
+    // ######################## CONSTRUCTOR ########################
 
-    fn build_commitments_from_votes(
-        env: Env,
-        project_id: u32,
-        votes: Vec<u128>,
-        seeds: Vec<u128>,
-    ) -> Vec<BytesN<96>>;
-
-    fn create_invoice(
-        env: &Env,
-        project_id: u32,
-        creator: Address,
-        counterpart: Address,
-        proof: String,
-        voting_ends_at: u64,
-        called_contract: Address,
-        // amount: i128,
-    ) -> Result<Invoice, Error>;
-
-    fn create_invoice_demo(
-        env: &Env,
-        project_id: u32,
-        creator: Address,
-        counterpart: Address,
-        proof: String,
-        voting_ends_at: u64,
-        called_contract: Address,
-    ) -> Result<Invoice, Error>;
-
-    fn get_balance(env: &Env, employee: Address) -> i128;
-
-    fn redeem(env: &Env, employee: Address) -> Result<i128, Error>;
-
-    fn register_to_vote(env: &Env, creator: Address, invoice_id: u32) -> Result<Invoice, Error>;
-
-    fn commit_vote(
-        env: &Env,
-        voter: Address,
-        invoice_id: u32,
-        commit_hash: BytesN<32>,
-    ) -> Result<Invoice, Error>;
-
-    fn reveal_votes(
-        env: &Env,
-        creator: Address,
-        invoice_id: u32,
-        votes: Vec<bool>,
-        secrets: Vec<Bytes>,
-    ) -> Result<Invoice, Error>;
-
-    fn vote(env: Env, voter: Address, invoice_id: u32, vote_data: VoteAnon);
-
-    fn execute(
-        env: Env,
-        maintainer: Address,
-        invoice_id: u32,
-        tallies: Option<Vec<u128>>,
-        seeds: Option<Vec<u128>>,
-    ) -> InvoiceStatus;
-
-    fn claim_reward(env: Env, voter: Address, invoice_id: u32) -> Result<(), Error>;
-
-    fn proof(env: Env, invoice_id: u32, tallies: Vec<u128>, seeds: Vec<u128>) -> bool;
-}
-
-#[contract]
-pub struct ProtocolContract;
-
-#[contractimpl]
-impl ProtocolContractTrait for ProtocolContract {
     fn __constructor(env: Env, admin: Address, token: Address) -> Result<(), Error> {
-        initialize(&env, admin, token)
-    }
+        // Set the admin address
+        env.storage().instance().set(&DataKey::Admin, &admin);
+        // Set the USDC token address
+        env.storage().instance().set(&DataKey::Token, &token);
+        // Initialize the invoice counter
+        env.storage().instance().set(&DataKey::InvoiceCounter, &0u32);
+        // Initialize the total USDC balance
+        env.storage().instance().set(&DataKey::USDCBalance, &0i128);
 
-    fn anonymous_voting_setup(env: Env, judge: Address, project_id: u32, public_key: String) {
-        anonymous_voting_setup(env, judge, project_id, public_key)
-    }
-
-    fn get_anonymous_voting_config(env: Env, project_id: u32) -> AnonymousVoteConfig {
-        get_anon_config(&env, project_id)
-    }
-
-    fn build_commitments_from_votes(
-        env: Env,
-        invoice_id: u32,
-        votes: Vec<u128>,
-        seeds: Vec<u128>,
-    ) -> Vec<BytesN<96>> {
-        build_commitments_from_votes(env, invoice_id, votes, seeds)
-    }
-
-    fn new_voter(
-        env: Env,
-        user: Address,
-        // personal_data: Option<String>,
-    ) -> Result<(), Error> {
-        set_voter(&env, user);
         Ok(())
     }
 
-    fn get_user(env: Env, user: Address) -> Result<Voter, Error> {
-        get_voter(&env, user)
+    // ######################## ADMIN METHODS ########################
+
+    fn create_pool(env: &Env, address: Address, usdc_amount: i128) -> Result<(), Error> {
+        // Require authentication from the admin
+        address.require_auth();
+        create_pool(env, user, usdc_amount)
     }
 
-    fn get_invoice(env: Env, invoice_id: u32) -> Result<Invoice, Error> {
-        get_invoice(&env, invoice_id)
+    fn modify_interest_rate(env: Env, address: Address, pool_id: u32, new_rate: u32) -> Result<(), Error> {
+        // Require authentication from the admin
+        address.require_auth();
+        modify_interest_rate(env, address, pool_id, new_rate)
     }
 
-    fn get_balance(env: &Env, employee: Address) -> i128 {
-        get_balance(env, &employee)
+    fn change_admin(env: Env, address: Address, new_admin: Address) -> Result<(), Error> {
+        // Require authentication from the current admin
+        address.require_auth();
+        change_admin(env, address, new_admin)
     }
+
+    fn validate_invoice(env: &Env, address: Address, invoice_id: u32, ) -> Result<(), Error> {
+        // Require authentication from the admin
+        address.require_auth();
+        validate_invoice(env, invoice_id)
+    }
+
+    // ######################## BORROWER METHODS ########################
+
+    fn register_as_borrower(
+        env: Env,
+        user: Address,
+        personal_data: Option<String>,
+    ) -> Result<(), Error>;
 
     fn create_invoice(
         env: &Env,
-        project_id: u32,
-        creator: Address,
-        counterpart: Address,
-        proof: String,
-        voting_ends_at: u64,
-        called_contract: Address,
-        // amount: i128,
-    ) -> Result<Invoice, Error> {
-        create_invoice(
-            env,
-            project_id,
-            creator,
-            counterpart,
-            proof,
-            voting_ends_at,
-            called_contract,
-            // amount,
-        )
-    }
-
-    fn create_invoice_demo(
-        env: &Env,
-        project_id: u32,
-        creator: Address,
-        counterpart: Address,
-        proof: String,
-        voting_ends_at: u64,
-        called_contract: Address,
-    ) -> Result<Invoice, Error> {
-        create_invoice_demo(
-            env,
-            project_id,
-            creator,
-            counterpart,
-            proof,
-            voting_ends_at,
-            called_contract,
-        )
-    }
-
-    fn redeem(env: &Env, employee: Address) -> Result<i128, Error> {
-        redeem(env, employee)
-    }
-
-    fn register_to_vote(env: &Env, creator: Address, invoice_id: u32) -> Result<Invoice, Error> {
-        register_to_vote(env, creator, invoice_id)
-    }
-
-    fn commit_vote(
-        env: &Env,
-        voter: Address,
         invoice_id: u32,
-        commit_hash: BytesN<32>,
-    ) -> Result<Invoice, Error> {
-        commit_vote(env, voter, invoice_id, commit_hash)
-    }
-
-    fn reveal_votes(
-        env: &Env,
         creator: Address,
-        invoice_id: u32,
-        votes: Vec<bool>,
-        secrets: Vec<Bytes>,
-    ) -> Result<Invoice, Error> {
-        reveal_votes(env, creator, invoice_id, votes, secrets)
-    }
+        amount: i128,
+        invoice_info: String,
+        pool_id: u32,
+    ) -> Result<Invoice, Error>;
 
-    fn vote(env: Env, voter: Address, invoice_id: u32, vote_data: VoteAnon) {
-        vote(env, voter, invoice_id, vote_data);
-    }
+    fn pay_debt(env: &Env, invoice_id: u32) -> Result<i128, Error>;
 
-    fn execute(
+    // ######################## INVESTOR METHODS ########################
+
+    fn register_as_investor(
         env: Env,
-        maintainer: Address,
+        user: Address,
+    ) -> Result<(), Error>;
+
+    fn invest_in_pool(env: &Env, pool_id: u32, usdc_amount: i128) -> Result<(), Error>;
+
+    fn claim_reward(env: Env, pool_id: u32) -> Result<(), Error>;
+
+    // ######################## GET METHODS ########################
+
+    fn get_borrower(env: Env, user: Address) -> Result<Borrower, Error>;
+
+    fn get_investor(env: Env, user: Address) -> Result<Investor, Error>;
+
+    fn get_pool_balance(env: &Env, pool_id: u32) -> i128;
+
+    fn get_invoice(env: Env, invoice_id: u32) -> Result<Invoice, Error>;
+
+}
+
+#[contract]
+pub struct Contract;
+
+#[contractimpl]
+impl ContractTrait for Contract {
+    // ######################## CONSTRUCTOR ########################
+
+    fn __constructor(env: Env, admin: Address, token: Address) -> Result<(), Error>;
+
+    // ######################## ADMIN METHODS ########################
+
+    fn create_pool(env: &Env, user: Address, usdc_amount: i128) -> Result<(), Error>;
+
+    fn modify_interest_rate(env: Env, admin: Address, pool_id: u32, new_rate: u32) -> Result<(), Error>;
+
+    fn change_admin(env: Env, current_admin: Address, new_admin: Address) -> Result<(), Error>;
+
+    fn validate_invoice(env: &Env, invoice_id: u32, ) -> Result<(), Error>;
+
+    // ######################## BORROWER METHODS ########################
+
+    fn register_as_borrower(
+        env: Env,
+        user: Address,
+        personal_data: Option<String>,
+    ) -> Result<(), Error>;
+
+    fn create_invoice(
+        env: &Env,
         invoice_id: u32,
-        tallies: Option<Vec<u128>>,
-        seeds: Option<Vec<u128>>,
-    ) -> InvoiceStatus {
-        execute(env, maintainer, invoice_id, tallies, seeds)
-    }
+        creator: Address,
+        amount: i128,
+        invoice_info: String,
+        pool_id: u32,
+    ) -> Result<Invoice, Error>;
 
-    fn claim_reward(env: Env, voter: Address, invoice_id: u32) -> Result<(), Error> {
-        claim_reward(env, voter, invoice_id)
-    }
+    fn pay_debt(env: &Env, invoice_id: u32) -> Result<i128, Error>;
 
-    fn proof(env: Env, invoice_id: u32, tallies: Vec<u128>, seeds: Vec<u128>) -> bool {
-        let invoice = get_invoice(&env, invoice_id).unwrap();
-        proof(env, invoice, tallies, seeds)
-    }
+    // ######################## INVESTOR METHODS ########################
+
+    fn register_as_investor(
+        env: Env,
+        user: Address,
+    ) -> Result<(), Error>;
+
+    fn invest_in_pool(env: &Env, pool_id: u32, usdc_amount: i128) -> Result<(), Error>;
+
+    fn claim_reward(env: Env, pool_id: u32) -> Result<(), Error>;
+
+    // ######################## GET METHODS ########################
+
+    fn get_borrower(env: Env, user: Address) -> Result<Borrower, Error>;
+
+    fn get_investor(env: Env, user: Address) -> Result<Investor, Error>;
+
+    fn get_pool_balance(env: &Env, pool_id: u32) -> i128;
+
+    fn get_invoice(env: Env, invoice_id: u32) -> Result<Invoice, Error>;
 }
