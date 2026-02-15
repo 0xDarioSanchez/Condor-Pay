@@ -1,25 +1,23 @@
 use crate::events::event;
-use crate::storage::invoice::get_invoice;
-use crate::storage::vote::get_anonymous_voting_config;
-use crate::storage::voter::{get_voter, update_voter};
+use crate::methods::invoice;
+use crate::storage::investor::{get_investor, update_investor};
+use crate::storage::borrower::{get_borrower, update_borrower};
+use crate::storage::pool;
 use crate::storage::{
-    invoice::{Invoice, set_invoice},
+    invoice::{Invoice, set_invoice, get_invoice},
     invoice_status::InvoiceStatus,
     error::Error,
     storage::DataKey,
-    vote::{VoteAnon, VoteData},
 };
-use soroban_sdk::crypto::bls12_381::G1Affine;
-use soroban_sdk::{Address, BytesN, Env, String, U256, Vec, panic_with_error, vec};
 
-pub fn create_invoice_demo(
+/// Create a new invoice.
+/// 
+pub fn create_invoice(
     env: &Env,
-    project_id: u32,
     creator: Address,
-    counterpart: Address,
-    proof: String,
-    voting_ends_at: u64,
-    called_contract: Address,
+    amount: i128,
+    invoice_info: String,
+    pool_id: u32,           //Pool from which the invoice will be funded
 ) -> Result<Invoice, Error> {
     // Require authentication from the invoice creator
     creator.require_auth();
@@ -27,89 +25,80 @@ pub fn create_invoice_demo(
     let current_id = env
         .storage()
         .instance()
-        .get::<_, u32>(&DataKey::InvoiceId)
+        .get::<_, u32>(&DataKey::InvoiceCounter)
         .unwrap_or(0);
     let new_invoice_id = current_id + 1;
     env.storage()
         .instance()
-        .set(&DataKey::InvoiceId, &new_invoice_id);
-
-    let votes = vec![&env];
-    let vote_data = VoteData {
-        voting_ends_at,
-        votes,
-    };
+        .set(&DataKey::InvoiceCounter, &new_invoice_id);
 
     let invoice = Invoice {
-        project_id,
         invoice_id: new_invoice_id,
-        able_to_vote: Vec::new(env),
-        voters: Vec::new(env),
-        vote_commits: Vec::new(env),
-        votes: Vec::new(env),
-        invoice_status: InvoiceStatus::OPEN,
-        initial_timestamp: env.ledger().timestamp(),
-        finish_timestamp: None,
         creator: creator.clone(),
-        counterpart,
-        winner: None,
-        creator_proves: proof.clone(),
-        counterpart_proves: None,
-        waiting_for_judges: false,
-        votes_for: 0,
-        votes_against: 0,
-        vote_data,
-        called_contract,
+        initial_timestamp: env.ledger().timestamp(),
+        approved_timestamp: 0,
+        amount,
+        invoice_status: InvoiceStatus::OPEN,
+        invoice_info,
     };
 
     set_invoice(env, new_invoice_id, invoice.clone());
 
     // Emit event for invoice creation
-    event::AnonymousInvoiceSetup {
-        project_id,
-        creator,
+    event::NewInvoice {
+        invoice_id: new_invoice_id,
+        creator: creator.clone(),
     }
     .publish(&env);
 
     Ok(invoice)
 }
 
-pub fn create_invoice(
+
+pub fn validate_invoice(
     env: &Env,
-    project_id: u32,
-    creator: Address,
-    counterpart: Address,
-    proof: String,
-    voting_ends_at: u64,
-    called_contract: Address,
-    // amount: i128,
-) -> Result<Invoice, Error> {
-    let invoice = Invoice {
-        project_id,
-        invoice_id: 1,
-        able_to_vote: Vec::new(env),
-        voters: Vec::new(env),
-        vote_commits: Vec::new(env),
-        votes: Vec::new(env),
-        invoice_status: InvoiceStatus::OPEN,
-        initial_timestamp: env.ledger().timestamp(),
-        finish_timestamp: None,
-        creator: creator.clone(),
-        counterpart,
-        winner: None,
-        creator_proves: proof.clone(),
-        counterpart_proves: None,
-        waiting_for_judges: false,
-        votes_for: 0,
-        votes_against: 0,
-        vote_data: VoteData {
-            voting_ends_at,
-            votes: Vec::new(env),
-        },
-        called_contract,
+    invoice_id: u32,
+    validate: bool
+) -> InvoiceStatus {
+    // Get Admin
+    admin = DataKey::Admin
+        .get(&env.storage().instance())
+        .unwrap_or_else(|| panic_with_error!(env, Error::UserNotFound)); 
+    // Only Admin can validate the invoice
+    admin.require_auth();
+
+    let invoice = match get_invoice(env, invoice_id) {
+        Ok(invoice) => invoice,
+        Err(_) => panic_with_error!(env, Error::InvoiceNotFound),
     };
 
-    Ok(invoice)
+    if validate {
+        invoice.invoice_status = InvoiceStatus::VALIDATED;
+        fund_invoice(env, invoice_id);
+    } else {
+        invoice.invoice_status = InvoiceStatus::REJECTED;
+    };
+
+    return invoice.invoice_status;
+}
+
+pub fn fund_invoice(
+    env: &Env,
+    invoice_id: u32,
+) {
+    let mut invoice = match get_invoice(env, invoice_id) {
+        Ok(invoice) => invoice,
+        Err(_) => panic_with_error!(env, Error::InvoiceNotFound),
+    };
+
+    // Only validated invoices can be funded
+    if invoice.invoice_status != InvoiceStatus::VALIDATED {
+        panic_with_error!(env, Error::InvoiceNotFound);
+    }
+
+    // Update invoice status to FUNDED
+    invoice.invoice_status = InvoiceStatus::FUNDED;
+    set_invoice(env, invoice_id, invoice.clone());
 }
 
 /// Execute a vote after the voting period ends.
@@ -292,7 +281,7 @@ pub fn proof(
             .zip(tally_commitments.iter_mut())
         {
             let commitment_ = G1Affine::from_bytes(commitment);
-            // scale the commitment by the voter weight: weight * (g*v + h*r).
+            // scale the commitment by the investor weight: weight * (g*v + h*r).
             let weighted_commitment = bls12_381.g1_mul(&commitment_, &weight_.clone().into());
             *tally_commitment = bls12_381.g1_add(tally_commitment, &weighted_commitment);
         }
@@ -370,16 +359,16 @@ fn tallies_to_result(
 
 /// Claim reward for voting with the majority.
 ///
-/// Allows voters to claim their reward after a invoice is executed.
+/// Allows investors to claim their reward after a invoice is executed.
 /// Voters who voted with the winning side receive:
 /// - +10 balance
 /// - +1 reputation
 ///
-/// This function can only be called once per voter per invoice.
+/// This function can only be called once per investor per invoice.
 ///
 /// # Arguments
 /// * `env` - The environment object
-/// * `voter` - The address of the voter claiming the reward
+/// * `investor` - The address of the investor claiming the reward
 /// * `invoice_id` - The ID of the invoice
 ///
 /// # Returns
@@ -388,11 +377,11 @@ fn tallies_to_result(
 /// # Panics
 /// * If the invoice doesn't exist
 /// * If the invoice is not yet executed (still OPEN)
-/// * If the voter didn't participate in this invoice
-/// * If the voter already claimed their reward
-/// * If the voter didn't vote with the majority
-pub fn claim_reward(env: Env, voter: Address, invoice_id: u32) -> Result<(), Error> {
-    voter.require_auth();
+/// * If the investor didn't participate in this invoice
+/// * If the investor already claimed their reward
+/// * If the investor didn't vote with the majority
+pub fn claim_reward(env: Env, investor: Address, invoice_id: u32) -> Result<(), Error> {
+    investor.require_auth();
 
     // Get invoice
     let invoice = match get_invoice(&env, invoice_id) {
@@ -406,39 +395,39 @@ pub fn claim_reward(env: Env, voter: Address, invoice_id: u32) -> Result<(), Err
     }
 
     // Check if already claimed
-    let claim_key = DataKey::RewardClaimed(invoice_id, voter.clone());
+    let claim_key = DataKey::RewardClaimed(invoice_id, investor.clone());
     if env.storage().instance().has(&claim_key) {
         panic_with_error!(&env, &Error::AlreadyClaimed);
     }
 
-    // Get voter data
-    let voter_data = match get_voter(&env, voter.clone()) {
+    // Get investor data
+    let investor_data = match get_investor(&env, investor.clone()) {
         Ok(v) => v,
         Err(_) => panic_with_error!(&env, &Error::UserNotFound),
     };
 
-    // Find voter's vote in the invoice
-    let mut voter_choice: Option<usize> = None; // 0=creator, 1=counterpart, 2=abstain
+    // Find investor's vote in the invoice
+    let mut investor_choice: Option<usize> = None; // 0=creator, 1=counterpart, 2=abstain
 
     for vote in invoice.vote_data.votes.iter() {
         let VoteAnon::AnonymousVote(anonymous_vote) = vote;
-        if anonymous_vote.address == voter {
+        if anonymous_vote.address == investor {
             // Determine which option they voted for by checking the tallies
             // This is a simplified check - in production you'd decrypt their vote
-            // For now, we'll check if they're in the voters list
-            voter_choice = Some(0); // Placeholder - needs proper vote extraction
+            // For now, we'll check if they're in the investors list
+            investor_choice = Some(0); // Placeholder - needs proper vote extraction
             break;
         }
     }
 
-    // Check if voter participated
-    if voter_choice.is_none() {
+    // Check if investor participated
+    if investor_choice.is_none() {
         panic_with_error!(&env, &Error::VoterNotFound);
     }
 
     // For anonymous votes, we can't easily determine individual vote choice
-    // So we reward ALL voters who participated (they proved they voted)
-    // Alternatively, you could require voters to submit proof of their vote choice
+    // So we reward ALL investors who participated (they proved they voted)
+    // Alternatively, you could require investors to submit proof of their vote choice
 
     // If invoice ended in ABSTAIN, no rewards
     if invoice.invoice_status == InvoiceStatus::ABSTAIN {
@@ -446,7 +435,7 @@ pub fn claim_reward(env: Env, voter: Address, invoice_id: u32) -> Result<(), Err
     }
 
     // Award the reward
-    update_voter(&env, voter_data, 10, 1);
+    update_investor(&env, investor_data, 10, 1);
 
     // Mark as claimed
     env.storage().instance().set(&claim_key, &true);
