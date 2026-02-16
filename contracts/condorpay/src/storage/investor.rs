@@ -1,13 +1,14 @@
-use super::{Invoice_status::InvoiceStatus, vote::Vote};
-use crate::storage::{error::Error, storage::DataKey, vote::VoteData};
-use soroban_sdk::{Address, BytesN, Env, String, Vec, contracttype};
+use crate::storage::{storage::DataKey};
+use crate::error::Error;
+use soroban_sdk::{Address, Env, contracttype};
+
 
 #[derive(Clone)]
 #[contracttype]
 pub struct Investor {
     pub address: Address,
     // pub invested_amount: i128,          // In USDC
-    pub lp_tokens: i128,                // Amount of LP tokens received
+    // pub lp_tokens: i128,                *Stored in DataKey
 }
 
 pub(crate) fn get_investor(env: &Env, user: Address) -> Result<Investor, Error> {
@@ -22,6 +23,6 @@ pub(crate) fn get_investor(env: &Env, user: Address) -> Result<Investor, Error> 
 pub(crate) fn set_investor(env: &Env, user: Address, investor: Investor) {
     let key = DataKey::Investors(user);
 
-    env.storage().instance().set(&key, &investor)
+    env.storage().persistent().set(&key, &investor)
 }
 

@@ -2,11 +2,28 @@
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum Error {
+    // Contract
+    Unauthorized = 1,
+    AdminNotSet = 2,
+    InvalidInput = 3,
+    NoBalanceToTransfer = 7,
+    InsufficientPoolBalance = 8,
 
-    PoolNotFound = 10,
-    InvestorNotFound = 11,
-    InvoiceNotFound = 12,
+    // Borrowers
+    BorrowerNotFound = 10,
+    BorrowerAlreadyRegistered = 11,
 
-    /// The contract has no balance to transfer to the guesser
-    NoBalanceToTransfer = 20,
+    // Investors
+    InvestorAlreadyRegistered = 20,
+    InvestorNotFound = 21,
+
+    // Invoices
+    InvoiceAlreadyApproved = 30,
+    InvalidInvoiceStatus = 31,
+    InvoiceNotFound = 32,
+
+    // Pools
+    PoolNotFound = 40,
+    PoolAlreadyExists = 41,
+
 }
