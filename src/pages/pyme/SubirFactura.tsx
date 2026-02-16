@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { FileUp, Upload, CheckCircle, ArrowRight, X } from "lucide-react";
+import type { InvoiceDataItem } from "@/contexts/FormDataContext";
+import { useInvoices } from "@/hooks/useInvoices";
+import { calculateInvoiceOffer } from "@/services/invoiceService";
 
 type Step = "upload" | "validating" | "data" | "offer" | "confirmed";
 
@@ -13,18 +16,108 @@ export default function SubirFactura() {
   const [step, setStep] = useState<Step>("upload");
   const [fileName, setFileName] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  const [currentInvoiceId, setCurrentInvoiceId] = useState<string | null>(null);
 
-  const handleFileSelect = (name: string) => {
-    setFileName(name);
+  // Hook del servicio ORM
+  const { createInvoice, updateInvoice, updateStatus, getById } = useInvoices();
+
+  // Estado temporal para edición de descripción
+  const [description, setDescription] = useState("");
+
+  // Datos actuales de la factura
+  const currentInvoice = currentInvoiceId ? getById(currentInvoiceId) : null;
+
+  const handleFileSelect = (file: File) => {
+    setFileName(file.name);
     setStep("validating");
-    setTimeout(() => setStep("data"), 2000);
+
+    // Simular procesamiento de archivo
+    setTimeout(() => {
+      // En producción aquí parsearías el XML/PDF
+      // Por ahora simulamos datos extraídos
+      const extractedData: Omit<InvoiceDataItem, "id" | "uploadDate"> = {
+        invoiceNumber: "E001-354",
+        fileName: file.name,
+        fileType: file.name.endsWith(".xml") ? "xml" : "pdf",
+        issuerRuc: "20512345678",
+        issuerName: "CONFECCIONES Y DISTRIBUCIONES S.A.C.",
+        payerRuc: "20498765432",
+        payerName: "AQP SECURITY S.A.C.",
+        payerRating: "A",
+        amount: 10000,
+        currency: "PEN",
+        issueDate: "2026-02-14",
+        dueDate: "2026-03-17",
+        status: "validated",
+        description: "",
+      };
+
+      // Crear factura en el ORM
+      const newInvoice = createInvoice(extractedData);
+      setCurrentInvoiceId(newInvoice.id);
+
+      setStep("data");
+    }, 2000);
+  };
+
+  const handleSolicitarOferta = () => {
+    if (!currentInvoice) return;
+
+    // Calcular oferta automáticamente
+    const offer = calculateInvoiceOffer(
+      currentInvoice.amount,
+      currentInvoice.dueDate,
+      currentInvoice.payerRating,
+      "A", // Rating de la PyME (en producción vendría del usuario)
+    );
+
+    // Guardar oferta en la factura
+    updateInvoice(currentInvoice.id, {
+      offer,
+      discountRate: offer?.rate,
+      discountAmount: offer?.discount,
+      netAmount: offer?.receivable,
+      description: description || currentInvoice.description,
+    });
+
+    updateStatus(currentInvoice.id, "offer_pending");
+    setStep("offer");
+  };
+
+  const handleAceptarOferta = () => {
+    if (!currentInvoice) return;
+
+    // Simular tokenización en Stellar
+    const mockTokenId = `TKN_${Date.now()}`;
+    const mockTxHash = `0x${Math.random().toString(36).substr(2, 64)}`;
+
+    // Actualizar estado a tokenized
+    updateInvoice(currentInvoice.id, {
+      tokenId: mockTokenId,
+      transactionHash: mockTxHash,
+      status: "tokenized",
+      tokenizedDate: new Date().toISOString(),
+    });
+
+    setStep("confirmed");
+  };
+
+  const handleCancelar = () => {
+    // Eliminar factura draft si cancelamos
+    if (currentInvoiceId) {
+      updateStatus(currentInvoiceId, "rejected");
+    }
+    setStep("upload");
+    setFileName("");
+    setCurrentInvoiceId(null);
+    setDescription("");
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0];
-    if (file) handleFileSelect(file.name);
+    if (file) handleFileSelect(file);
   };
 
   return (
@@ -108,7 +201,7 @@ export default function SubirFactura() {
                     accept=".xml,.pdf"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) handleFileSelect(file.name);
+                      if (file) handleFileSelect(file);
                     }}
                   />
                   <Button variant="outline" className="gap-2" asChild>
@@ -147,7 +240,7 @@ export default function SubirFactura() {
       )}
 
       {/* Data Step */}
-      {step === "data" && (
+      {step === "data" && currentInvoice && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -169,35 +262,61 @@ export default function SubirFactura() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>Número de Factura</Label>
-                  <Input defaultValue="F001-00284" readOnly className="mt-1" />
+                  <Input
+                    defaultValue={currentInvoice.invoiceNumber}
+                    readOnly
+                    className="mt-1"
+                  />
                 </div>
                 <div>
                   <Label>RUC Emisor</Label>
-                  <Input defaultValue="20512345678" readOnly className="mt-1" />
+                  <Input
+                    defaultValue={currentInvoice.issuerRuc}
+                    readOnly
+                    className="mt-1"
+                  />
                 </div>
                 <div>
                   <Label>Empresa Pagadora</Label>
                   <Input
-                    defaultValue="Minera Cerro SAC"
+                    defaultValue={currentInvoice.payerName}
                     readOnly
                     className="mt-1"
                   />
                 </div>
                 <div>
                   <Label>RUC Pagadora</Label>
-                  <Input defaultValue="20498765432" readOnly className="mt-1" />
-                </div>
-                <div>
-                  <Label>Monto Total</Label>
                   <Input
-                    defaultValue="S/ 10,000.00"
+                    defaultValue={currentInvoice.payerRuc}
                     readOnly
                     className="mt-1"
                   />
                 </div>
                 <div>
-                  <Label>Fecha de Vencimiento</Label>
-                  <Input defaultValue="2025-04-10" readOnly className="mt-1" />
+                  <Label>Monto Total</Label>
+                  <Input
+                    defaultValue={`${currentInvoice.currency === "PEN" ? "S/" : "$"} ${currentInvoice.amount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    readOnly
+                    className="mt-1"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Fecha de Emision</Label>
+                    <Input
+                      defaultValue={currentInvoice.issueDate}
+                      readOnly
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Fecha de Vencimiento</Label>
+                    <Input
+                      defaultValue={currentInvoice.dueDate}
+                      readOnly
+                      className="mt-1"
+                    />
+                  </div>
                 </div>
               </div>
               <div>
@@ -205,21 +324,17 @@ export default function SubirFactura() {
                 <Input
                   placeholder="Servicios de consultoría técnica"
                   className="mt-1"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
               <div className="flex gap-3 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setStep("upload");
-                    setFileName("");
-                  }}
-                >
+                <Button variant="outline" onClick={handleCancelar}>
                   Cancelar
                 </Button>
                 <Button
                   className="gradient-gold text-gold-foreground gap-2"
-                  onClick={() => setStep("offer")}
+                  onClick={handleSolicitarOferta}
                 >
                   Solicitar Oferta <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -230,7 +345,7 @@ export default function SubirFactura() {
       )}
 
       {/* Offer Step */}
-      {step === "offer" && (
+      {step === "offer" && currentInvoice && currentInvoice.offer && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -250,16 +365,21 @@ export default function SubirFactura() {
                   <p className="text-xs text-muted-foreground mb-1">
                     Monto Factura
                   </p>
-                  <p className="text-xl font-display font-bold">S/ 10,000</p>
+                  <p className="text-xl font-display font-bold">
+                    {currentInvoice.currency === "PEN" ? "S/" : "$"}{" "}
+                    {currentInvoice.amount.toLocaleString("es-PE")}
+                  </p>
                 </div>
                 <div className="text-center p-4 rounded-lg bg-muted/50">
                   <p className="text-xs text-muted-foreground mb-1">Plazo</p>
-                  <p className="text-xl font-display font-bold">60 días</p>
+                  <p className="text-xl font-display font-bold">
+                    {currentInvoice.offer.term} días
+                  </p>
                 </div>
                 <div className="text-center p-4 rounded-lg bg-muted/50">
                   <p className="text-xs text-muted-foreground mb-1">Tasa</p>
                   <p className="text-xl font-display font-bold text-primary">
-                    3.5%
+                    {currentInvoice.offer.rate.toFixed(1)}%
                   </p>
                 </div>
                 <div className="text-center p-4 rounded-lg bg-muted/50">
@@ -267,7 +387,8 @@ export default function SubirFactura() {
                     Descuento
                   </p>
                   <p className="text-xl font-display font-bold text-destructive">
-                    -$350
+                    -{currentInvoice.currency === "PEN" ? "S/" : "$"}
+                    {currentInvoice.offer.discount.toFixed(2)}
                   </p>
                 </div>
                 <div className="text-center p-4 rounded-lg bg-success/10 col-span-2">
@@ -275,7 +396,7 @@ export default function SubirFactura() {
                     Recibirás
                   </p>
                   <p className="text-2xl font-display font-bold text-success">
-                    9,650 USDC
+                    {currentInvoice.offer.receivable.toFixed(2)} USDC
                   </p>
                   <p className="text-xs text-muted-foreground">
                     en menos de 24 horas
@@ -286,36 +407,41 @@ export default function SubirFactura() {
               <div className="bg-muted/30 rounded-lg p-4 text-sm space-y-1">
                 <p className="font-medium mb-2">Basado en:</p>
                 <p className="text-muted-foreground">
-                  • Rating empresa pagadora:{" "}
-                  <span className="text-foreground font-medium">AA</span>
+                  • Rating empresa pagadora ({currentInvoice.payerName}):{" "}
+                  <span className="text-foreground font-medium">
+                    {currentInvoice.payerRating || "A"}
+                  </span>
                 </p>
                 <p className="text-muted-foreground">
-                  • Rating PyME:{" "}
+                  • Rating PyME ({currentInvoice.issuerName}):{" "}
                   <span className="text-foreground font-medium">A</span>
                 </p>
                 <p className="text-muted-foreground">
-                  • Sector:{" "}
-                  <span className="text-foreground font-medium">Minería</span>
+                  • Pool de liquidez:{" "}
+                  <span className="text-primary font-medium">30 días</span>{" "}
+                  (vencimiento en {currentInvoice.offer.term} días)
                 </p>
                 <p className="text-muted-foreground">
-                  • Liquidez del pool:{" "}
-                  <span className="text-success font-medium">Alta</span>
+                  • Sector:{" "}
+                  <span className="text-foreground font-medium">
+                    Confecciones
+                  </span>{" "}
+                  →{" "}
+                  <span className="text-foreground font-medium">Seguridad</span>
+                </p>
+                <p className="text-muted-foreground text-xs mt-2 pt-2 border-t border-border">
+                  💼 Distribución por sector: Confecciones (PyME) factura a
+                  empresa de Seguridad con rating A
                 </p>
               </div>
 
               <div className="flex gap-3 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setStep("upload");
-                    setFileName("");
-                  }}
-                >
+                <Button variant="outline" onClick={handleCancelar}>
                   <X className="h-4 w-4 mr-2" /> Rechazar
                 </Button>
                 <Button
                   className="gradient-gold text-gold-foreground gap-2"
-                  onClick={() => setStep("confirmed")}
+                  onClick={handleAceptarOferta}
                 >
                   <CheckCircle className="h-4 w-4" /> Aceptar y Tokenizar
                 </Button>
@@ -326,7 +452,7 @@ export default function SubirFactura() {
       )}
 
       {/* Confirmed */}
-      {step === "confirmed" && (
+      {step === "confirmed" && currentInvoice && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -342,15 +468,35 @@ export default function SubirFactura() {
               <p className="text-muted-foreground mb-1">
                 Tu factura ha sido registrada en la blockchain de Stellar
               </p>
-              <p className="text-sm text-muted-foreground mb-6">
-                Recibirás 9,650 USDC en tu wallet en menos de 24 horas
+              <p className="text-sm text-muted-foreground mb-2">
+                Recibirás{" "}
+                <span className="text-success font-semibold">
+                  {currentInvoice.offer?.receivable.toFixed(2)} USDC
+                </span>{" "}
+                en tu wallet en menos de 24 horas
               </p>
+              <div className="text-xs text-muted-foreground mb-6 space-y-1">
+                <p>
+                  Token ID:{" "}
+                  <span className="font-mono text-foreground">
+                    {currentInvoice.tokenId}
+                  </span>
+                </p>
+                <p>
+                  Tx Hash:{" "}
+                  <span className="font-mono text-foreground text-[10px]">
+                    {currentInvoice.transactionHash?.slice(0, 32)}...
+                  </span>
+                </p>
+              </div>
               <div className="flex gap-3 justify-center">
                 <Button
                   variant="outline"
                   onClick={() => {
                     setStep("upload");
                     setFileName("");
+                    setCurrentInvoiceId(null);
+                    setDescription("");
                   }}
                 >
                   Subir otra factura

@@ -14,6 +14,51 @@ import { Button } from "@/components/ui/button";
 
 const trackedInvoices = [
   {
+    id: "E001-354",
+    empresa: "CONFECCIONES Y DISTRIBUCIONES S.A.C.",
+    monto: "S/ 10,000",
+    status: "FINANCIADA",
+    timeline: [
+      {
+        label: "Factura subida",
+        date: "14 Feb 2026 09:00",
+        done: true,
+        icon: FileUp,
+      },
+      {
+        label: "Validación automática",
+        date: "14 Feb 2026 09:05",
+        done: true,
+        icon: ShieldCheck,
+      },
+      {
+        label: "Tokenizada en Stellar",
+        date: "14 Feb 2026 09:08",
+        done: true,
+        icon: Coins,
+      },
+      {
+        label: "Aprobada por pool",
+        date: "14 Feb 2026 09:15",
+        done: true,
+        icon: CheckCircle,
+      },
+      {
+        label: "USDC recibido",
+        date: "14 Feb 2026 10:30",
+        done: true,
+        icon: CreditCard,
+      },
+      {
+        label: "Esperando vencimiento",
+        date: "17 Mar 2026",
+        done: false,
+        icon: Clock,
+      },
+      { label: "Pago empresa", date: "—", done: false, icon: CreditCard },
+    ],
+  },
+  {
     id: "F-2025-0847",
     empresa: "Minera Cerro SAC",
     monto: "S/ 28,500",
@@ -147,7 +192,7 @@ export default function Tracking() {
                     const StepIcon = step.icon;
 
                     return (
-                      <div key={i} className="relative pb-8 last:pb-0">
+                      <div key={step.date} className="relative pb-8 last:pb-0">
                         {/* Vertical line */}
                         {!isLast && (
                           <div
