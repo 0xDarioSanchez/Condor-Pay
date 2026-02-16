@@ -7,32 +7,41 @@ import { useState } from "react";
 
 const pending = [
   {
+    id: "E001-354",
+    pyme: "Confecciones y Distribuciones S.A.C.",
+    monto: "S/ 10,000",
+    emision: "14 Feb 2026",
+    vencimiento: "17 Mar 2026",
+    descripcion: "Servicion textil",
+    hash: "0xo4khso8s7w7...",
+  },
+  {
     id: "F-2025-0901",
     pyme: "Logística Andina",
     monto: "S/ 12,800",
     emision: "01 Feb 2025",
     vencimiento: "22 Mar 2025",
     descripcion: "Servicio de transporte de carga - Ruta Lima-Arequipa",
-    hash: "0xabc...123",
+    hash: "0xabc1234def56...",
   },
-  {
-    id: "F-2025-0915",
-    pyme: "AgroPerú SRL",
-    monto: "S/ 35,200",
-    emision: "05 Feb 2025",
-    vencimiento: "01 Abr 2025",
-    descripcion: "Suministro de insumos agrícolas - Lote #2847",
-    hash: "0xdef...456",
-  },
-  {
-    id: "F-2025-0932",
-    pyme: "Envases Lima",
-    monto: "S/ 8,400",
-    emision: "08 Feb 2025",
-    vencimiento: "15 Abr 2025",
-    descripcion: "Embalaje industrial - Orden de compra #1293",
-    hash: "0xghi...789",
-  },
+  // {
+  //   id: "F-2025-0915",
+  //   pyme: "AgroPerú SRL",
+  //   monto: "S/ 35,200",
+  //   emision: "05 Feb 2025",
+  //   vencimiento: "01 Abr 2025",
+  //   descripcion: "Suministro de insumos agrícolas - Lote #2847",
+  //   hash: "0xdef...456",
+  // },
+  // {
+  //   id: "F-2025-0932",
+  //   pyme: "Envases Lima",
+  //   monto: "S/ 8,400",
+  //   emision: "08 Feb 2025",
+  //   vencimiento: "15 Abr 2025",
+  //   descripcion: "Embalaje industrial - Orden de compra #1293",
+  //   hash: "0xghi...789",
+  // },
 ];
 
 export default function ConfirmarFacturas() {
