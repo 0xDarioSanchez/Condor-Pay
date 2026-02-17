@@ -4,4 +4,3 @@ pub mod storage;
 pub mod pool;
 pub mod invoice_status;
 pub mod borrower;
-pub mod token;

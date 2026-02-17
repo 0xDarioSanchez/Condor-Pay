@@ -13,10 +13,11 @@ use crate::error::Error;
 
 use crate::methods::{
     pool::{create_pool, modify_interest_rate},
-    admin::{change_admin},
+    admin::{change_admin, set_admin},
     borrower::{register_as_borrower, pay_debt},
     investor::{register_as_investor, invest_in_pool, claim_reward},
     invoice::{create_invoice, validate_invoice},
+    token::{set_token},
 };
 
 
@@ -30,7 +31,7 @@ pub trait ContractTrait {
     // ######################## ADMIN METHODS ########################
 
     // fn create_pool(env: &Env, address: Address, usdc_amount: i128) -> Result<(), Error>; // USDC
-    fn create_pool(env: &Env, address: Address, xlm_amount: i128) -> Result<(), Error>; // XLM
+    fn create_pool(env: &Env, address: Address, yearly_interest_rate: i128) -> Result<(), Error>; // XLM
 
     fn modify_interest_rate(env: Env, address: Address, pool_id: u32, new_rate: u32) -> Result<(), Error> ;
 
@@ -50,6 +51,7 @@ pub trait ContractTrait {
         env: &Env,
         creator: Address,
         amount: i128,
+        duration: u32,
         invoice_info: String,
         pool_id: u32,
     ) -> Result<Invoice, Error>;
@@ -64,7 +66,7 @@ pub trait ContractTrait {
     ) -> Result<(), Error>;
 
     // fn invest_in_pool(env: &Env, user: Address, pool_id: u32, usdc_amount: i128) -> Result<(), Error>; // USDC
-    fn invest_in_pool(env: &Env, user: Address, pool_id: u32, xlm_amount: i128) -> Result<(), Error>; // XLM
+    fn invest_in_pool(env: &Env, user: Address, pool_id: u32, amount: i128) -> Result<(), Error>; // XLM
 
     fn claim_reward(env: &Env, address: Address, pool_id: u32) -> Result<(), Error>;
 
@@ -89,12 +91,12 @@ impl ContractTrait for Contract {
 
     fn __constructor(env: Env, admin: Address, token: Address) -> Result<(), Error> {
         // Set the admin address
-        env.storage().persistent().set(&DataKey::Admin, &admin);
-        // Set the USDC token address
-        env.storage().persistent().set(&DataKey::Token, &token);
+        set_admin(&env, &admin);
+        // Store the token address
+        set_token(&env, &token);
         // Initialize the invoice counter
         env.storage().persistent().set(&DataKey::InvoiceCounter, &0u32);
-        // Initialize the total USDC balance
+        // Initialize the total USDC/XLM balance
         env.storage().persistent().set(&DataKey::USDCBalance, &0i128);
 
         Ok(())
@@ -178,10 +180,11 @@ impl ContractTrait for Contract {
         env: &Env,
         creator: Address,
         amount: i128,
+        duration: u32,
         invoice_info: String,
         pool_id: u32,
     ) -> Result<Invoice, Error> {
-        create_invoice(env, creator, amount, 30, invoice_info, pool_id) //TODO: change duration to the one specified by the borrower when creating the invoice
+        create_invoice(env, creator, amount, duration, invoice_info, pool_id) //TODO: change duration to the one specified by the borrower when creating the invoice
     }
 
     // fn pay_debt(env: &Env, invoice_id: u32) -> Result<i128, Error> {
@@ -200,8 +203,8 @@ impl ContractTrait for Contract {
     // fn invest_in_pool(env: &Env, user: Address, pool_id: u32, usdc_amount: i128) -> Result<(), Error> { // USDC
     //     invest_in_pool(env, user, pool_id, usdc_amount)
     // }
-    fn invest_in_pool(env: &Env, user: Address, pool_id: u32, xlm_amount: i128) -> Result<(), Error> { // XLM
-        invest_in_pool(env, user, pool_id, xlm_amount)
+    fn invest_in_pool(env: &Env, user: Address, pool_id: u32, amount: i128) -> Result<(), Error> { // XLM
+        invest_in_pool(env, user, pool_id, amount)
     }
     
     fn pay_debt(env: &Env, invoice_id: u32) -> Result<i128, Error> {

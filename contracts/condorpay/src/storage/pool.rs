@@ -16,7 +16,7 @@ pub(crate) fn get_pool(env: &Env, pool_id: u32) -> Result<Pool, Error> {
     let key = DataKey::Pools(pool_id);
 
     env.storage()
-        .instance()
+        .persistent()
         .get(&key)
         .ok_or(Error::PoolNotFound)
 }

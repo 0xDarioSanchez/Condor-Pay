@@ -1,98 +1,158 @@
 #!/bin/bash
 set -e
 
+#######################################
+# CONFIG
+#######################################
 
+NETWORK="testnet"
+SOURCE="condor-admin"
 
+TOKEN_ALIAS="mock-token"
+MAIN_ALIAS="condorpay"
 
-# Lance Protocol - Anonymous Voting Demo Script
-#
-# USAGE:
-#   ./run.sh              - Deploy fresh contract (clean state) [DEFAULT]
-#   REUSE_CONTRACT=true ./run.sh  - Reuse existing contract (state persists)
+ENV_FILE=".env"
+
+#######################################
+# BUILD
+#######################################
 
 echo "************************************"
 echo -e "\t*****Building*****..."
 echo "************************************"
-cargo build --target wasm32v1-none --release && stellar contract optimize --wasm target/wasm32v1-none/release/condorpay.wasm
+
+stellar contract build --package mock-token --optimize
+stellar contract build --package condorpay --optimize
+
+
+#######################################
+# DEPLOY MOCK TOKEN (always fresh)
+#######################################
+
+echo "🚀 Deploying mock token..."
+
+stellar contract alias remove $TOKEN_ALIAS 2>/dev/null || true
+
+stellar contract deploy \
+  --wasm target/wasm32v1-none/release/mock_token.wasm \
+  --source $SOURCE \
+  --network $NETWORK \
+  --alias $TOKEN_ALIAS \
+  -- \
+  --admin $SOURCE \
+  --initial_supply 100000000000
+
+TOKEN_CONTRACT_ID=$(stellar contract alias show $TOKEN_ALIAS)
+
+echo "✅ Mock token deployed: $TOKEN_CONTRACT_ID"
+
+
+#######################################
+# DEPLOY OR REUSE MAIN CONTRACT
+#######################################
+
+deploy_main() {
+
+  stellar contract alias remove $MAIN_ALIAS 2>/dev/null || true
+
+  stellar contract deploy \
+    --wasm target/wasm32v1-none/release/condorpay.wasm \
+    --source $SOURCE \
+    --network $NETWORK \
+    --alias $MAIN_ALIAS \
+    -- \
+    --admin $SOURCE \
+    --token "$TOKEN_CONTRACT_ID"
+
+  CONTRACT_ID=$(stellar contract alias show $MAIN_ALIAS)
+}
+
+reuse_main() {
+
+  if stellar contract alias show $MAIN_ALIAS >/dev/null 2>&1; then
+      CONTRACT_ID=$(stellar contract alias show $MAIN_ALIAS)
+      echo "♻️ Using existing contract: $CONTRACT_ID"
+  else
+      echo "⚠️ Alias not found — deploying..."
+      deploy_main
+  fi
+}
+
 
 echo "**********************************"
 echo -e "\t****Deploying & Initializing**** ..."
 echo "**********************************"
 
-# Check if we should reuse existing contract or deploy fresh (default)
 if [ "$REUSE_CONTRACT" = "true" ]; then
-    echo "♻️  Reusing existing contract (state persists)..."
-    
-    # Check if alias exists
-    if stellar contract alias show condorpay 2>/dev/null; then
-        CONTRACT_ID=$(stellar contract alias show condorpay)
-        echo "✅ Using existing contract: $CONTRACT_ID"
-    else
-        echo "⚠️  No existing contract found. Deploying new one..."
-        
-        # Deploy and initialize in one step
-        stellar contract deploy \
-          --wasm target/wasm32v1-none/release/condorpay.optimized.wasm \
-          --source-account condor-admin \
-          --network testnet \
-          --alias condorpay \
-          -- \
-          --admin condor-admin
-        
-        CONTRACT_ID=$(stellar contract alias show condorpay)
-        echo "✅ Deployed new contract: $CONTRACT_ID"
-    fi
+    reuse_main
 else
-    echo "🗑️  Removing old contract alias for fresh deployment..."
-    stellar contract alias remove condorpay 2>/dev/null || true
-    
-    echo "📦 Deploying fresh contract with new state..."
-    
-    # Deploy and initialize in one step, capture contract ID
-    stellar contract deploy \
-      --wasm target/wasm32v1-none/release/condorpay.optimized.wasm \
-      --source-account condor-admin \
-      --network testnet \
-      --alias condorpay \
-      -- \
-            --admin condor-admin
-    
-    CONTRACT_ID=$(stellar contract alias show condorpay)
-    echo "✅ Deployed new contract: $CONTRACT_ID"
+    deploy_main
 fi
 
-# Update .env file with new contract ID
-if [ -f ".env" ]; then
-    # Check if the line exists
-    if grep -q "PUBLIC_LANCE_PROTOCOL_CONTRACT_ID=" .env; then
-        # Update existing line (works on both macOS and Linux)
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s|PUBLIC_LANCE_PROTOCOL_CONTRACT_ID=.*|PUBLIC_LANCE_PROTOCOL_CONTRACT_ID=$CONTRACT_ID|" .env
-        else
-            sed -i "s|PUBLIC_LANCE_PROTOCOL_CONTRACT_ID=.*|PUBLIC_LANCE_PROTOCOL_CONTRACT_ID=$CONTRACT_ID|" .env
-        fi
-        echo "✅ Updated .env file with new contract ID"
+echo "✅ Main contract: $CONTRACT_ID"
+
+
+#######################################
+# FUND TEST ACCOUNTS
+#######################################
+
+echo "💰 Funding test accounts..."
+
+stellar contract invoke \
+  --id $TOKEN_CONTRACT_ID \
+  --source condor-admin \
+  --network $NETWORK \
+  -- \
+  mint \
+  --caller condor-admin \
+  --to borrower-1 \
+  --amount 100000000
+
+stellar contract invoke \
+  --id $TOKEN_CONTRACT_ID \
+  --source condor-admin \
+  --network $NETWORK \
+  -- \
+  mint \
+  --caller condor-admin \
+  --to investor-1 \
+  --amount 100000000
+
+#######################################
+# UPDATE ENV
+#######################################
+
+if [ -f "$ENV_FILE" ]; then
+
+    if grep -q "PUBLIC_LANCE_PROTOCOL_CONTRACT_ID=" "$ENV_FILE"; then
+        sed -i "s|PUBLIC_LANCE_PROTOCOL_CONTRACT_ID=.*|PUBLIC_LANCE_PROTOCOL_CONTRACT_ID=$CONTRACT_ID|" "$ENV_FILE"
     else
-        # Append if doesn't exist
-        echo "" >> .env
-        echo "PUBLIC_LANCE_PROTOCOL_CONTRACT_ID=$CONTRACT_ID" >> .env
-        echo "✅ Added contract ID to .env file"
+        echo "" >> "$ENV_FILE"
+        echo "PUBLIC_LANCE_PROTOCOL_CONTRACT_ID=$CONTRACT_ID" >> "$ENV_FILE"
     fi
+
+    echo "✅ Updated .env"
+
 else
-    echo "⚠️  Warning: .env file not found. Contract ID: $CONTRACT_ID"
+    echo "⚠️ .env file not found"
 fi
 
-echo "📝 Contract ID: $CONTRACT_ID"
 
-# Skip test flow if reusing existing contract
+#######################################
+# STOP EARLY IF REUSE
+#######################################
+
 if [ "$REUSE_CONTRACT" = "true" ]; then
     echo ""
-    echo "✅ Contract ready! State persists across restarts."
-    echo "   Frontend will use: $CONTRACT_ID"
-    echo ""
-    echo "💡 Tip: Run './run.sh' to deploy with clean state (default)"
+    echo "✅ Contract ready (state preserved)"
+    echo "Frontend uses: $CONTRACT_ID"
     exit 0
 fi
+
+
+#######################################
+# FULL TEST WORKFLOW
+#######################################
 
 echo ""
 echo "=========================================================="
@@ -100,74 +160,67 @@ echo "  Running full test workflow on fresh contract..."
 echo "=========================================================="
 echo ""
 
-echo "***********************************************"
-echo -e "\tDeploying and testing CondorPay contract..."
-echo "***********************************************"
+# Register users
+echo " ==== Register Borrower 1... ===="
+stellar contract invoke --id $CONTRACT_ID --source borrower-1 --network $NETWORK -- \
+  register_as_borrower --user borrower-1 --personal_data '"Borrower 1 Data"'
 
-# Build and deploy CondorPay contract
-cargo build --target wasm32v1-none --release
-stellar contract optimize --wasm target/wasm32v1-none/release/condorpay.wasm
+echo " ==== Register Investor 1... ===="
+stellar contract invoke --id $CONTRACT_ID --source investor-1 --network $NETWORK -- \
+  register_as_investor --user investor-1
 
-stellar contract alias remove condorpay-contract 2>/dev/null || true
-stellar contract deploy \
-  --wasm target/wasm32v1-none/release/condorpay.optimized.wasm \
-  --source-account condor-admin \
-  --network testnet \
-  --alias condorpay-contract \
+echo " ==== Create Pool 1... ===="
+stellar contract invoke --id $CONTRACT_ID --source $SOURCE --network $NETWORK -- \
+  create_pool --address $SOURCE --yearly_interest_rate 2000
+
+echo " ==== Create Invoice 1... ===="
+stellar contract invoke \
+  --id $CONTRACT_ID \
+  --source borrower-1 \
+  --network $NETWORK \
   -- \
-    --admin condor-admin
-
-CONDORPAY_ID=$(stellar contract alias show condorpay-contract)
-echo "✅ Deployed CondorPay contract: $CONDORPAY_ID"
-
-
-########################################
-# DEPLOY CONDORPAY CONTRACT (ALWAYS SAME ADDRESS)
-########################################
-
-CONDORPAY_ALIAS="condorpay-contract"
-CONDORPAY_SALT="00000000000000000000000000000001"
-
-echo "🚀 Deploying CondorPay (always same address)..."
-stellar contract alias remove $CONDORPAY_ALIAS 2>/dev/null || true
-stellar contract deploy \
-    --wasm target/wasm32v1-none/release/condorpay.optimized.wasm \
-    --source-account condor-admin \
-    --network testnet \
-    --alias $CONDORPAY_ALIAS \
-    --salt $CONDORPAY_SALT \
-    -- \
-    --admin condor-admin
-
-CONTRACT_ID=$(stellar contract alias show $CONDORPAY_ALIAS)
-echo "✅ CondorPay deployed: $CONTRACT_ID"
-
-# Register as borrower and investor
-stellar contract invoke --id $CONDORPAY_ID --source borrower-1 --network testnet -- register_as_borrower --user borrower-1 --personal_data '"Borrower 1 Data"'
-stellar contract invoke --id $CONDORPAY_ID --source investor-1 --network testnet -- register_as_investor --user investor-1
-
-# Create pool
-stellar contract invoke --id $CONDORPAY_ID --source condor-admin --network testnet -- create_pool --address condor-admin --xlm_amount 1000000
-
-# Create invoice
-stellar contract invoke --id $CONDORPAY_ID --source borrower-1 --network testnet -- create_invoice --creator borrower-1 --amount 50000 --invoice_info '"Invoice 1"' --pool_id 1
+  create_invoice \
+  --creator borrower-1 \
+  --amount 50000 \
+  --duration 30 \
+  --invoice_info '"Invoice 1"' \
+  --pool_id 1
 
 # Validate invoice
-stellar contract invoke --id $CONDORPAY_ID --source condor-admin --network testnet -- validate_invoice --address condor-admin --invoice_id 1 --validate true
+echo " ==== Validate Invoice 1... ===="
+stellar contract invoke --id $CONTRACT_ID --source $SOURCE --network $NETWORK -- \
+  validate_invoice --address $SOURCE --invoice_id 1 --validate true
 
-# Investor invests in pool
-stellar contract invoke --id $CONDORPAY_ID --source investor-1 --network testnet -- invest_in_pool --user investor-1 --pool_id 1 --xlm_amount 50000
+# Invest
+echo " ==== Invest in Pool 1... ===="
+stellar contract invoke --id $CONTRACT_ID --source investor-1 --network $NETWORK -- \
+  invest_in_pool --user investor-1 --pool_id 1 --amount 50000
+
 
 # Claim reward
-stellar contract invoke --id $CONDORPAY_ID --source investor-1 --network testnet -- claim_reward --user investor-1 --pool_id 1
+echo " ==== Claim Reward for Investor 1... ===="
+stellar contract invoke --id $CONTRACT_ID --source investor-1 --network $NETWORK -- \
+  claim_reward --user investor-1 --pool_id 1
 
 # Pay debt
-stellar contract invoke --id $CONDORPAY_ID --source borrower-1 --network testnet -- pay_debt --invoice_id 1
+echo " ==== Pay Debt for Invoice 1... ===="
+stellar contract invoke --id $CONTRACT_ID --source borrower-1 --network $NETWORK -- \
+  pay_debt --invoice_id 1
 
-# Get functions
-stellar contract invoke --id $CONDORPAY_ID --source borrower-1 --network testnet -- get_borrower --user borrower-1
-stellar contract invoke --id $CONDORPAY_ID --source investor-1 --network testnet -- get_investor --user investor-1
-stellar contract invoke --id $CONDORPAY_ID --source condor-admin --network testnet -- get_pool_balance --pool_id 1
-stellar contract invoke --id $CONDORPAY_ID --source condor-admin --network testnet -- get_invoice --invoice_id 1
+echo " ==== GET Methods... ===="
+# Read state
+stellar contract invoke --id $CONTRACT_ID --source borrower-1 --network $NETWORK -- \
+  get_borrower --user borrower-1
 
-echo "All CondorPay contract functions executed."
+stellar contract invoke --id $CONTRACT_ID --source investor-1 --network $NETWORK -- \
+  get_investor --user investor-1
+
+stellar contract invoke --id $CONTRACT_ID --source $SOURCE --network $NETWORK -- \
+  get_pool_balance --pool_id 1
+
+stellar contract invoke --id $CONTRACT_ID --source $SOURCE --network $NETWORK -- \
+  get_invoice --invoice_id 1
+
+
+echo ""
+echo "✅ All CondorPay contract functions executed."

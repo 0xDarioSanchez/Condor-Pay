@@ -16,7 +16,7 @@ pub(crate) fn get_borrower(env: &Env, user: Address) -> Result<Borrower, Error> 
     let key = DataKey::Borrowers(user);
 
     env.storage()
-        .instance()
+        .persistent()
         .get(&key)
         .ok_or(Error::BorrowerNotFound)
 }

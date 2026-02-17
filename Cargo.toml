@@ -1,7 +1,8 @@
  
 [workspace]
 members = [
-	"contracts/condorpay"
+	"contracts/condorpay",
+	"contracts/mock-token"
 ]
 resolver = "2"
 

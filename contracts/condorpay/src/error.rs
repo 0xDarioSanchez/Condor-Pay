@@ -6,6 +6,7 @@ pub enum Error {
     Unauthorized = 1,
     AdminNotSet = 2,
     InvalidInput = 3,
+    ContractNotInitialized = 4,
     NoBalanceToTransfer = 7,
     InsufficientPoolBalance = 8,
 

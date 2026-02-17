@@ -21,7 +21,7 @@ pub(crate) fn get_invoice(env: &Env, invoice_id: u32) -> Result<Invoice, Error> 
     let key = DataKey::Invoices(invoice_id);
 
     env.storage()
-        .instance()
+        .persistent()
         .get(&key)
         .ok_or(Error::InvoiceNotFound)
 }

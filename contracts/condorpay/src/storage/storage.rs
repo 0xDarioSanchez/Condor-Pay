@@ -12,5 +12,5 @@ pub enum DataKey {
     Investors(Address),         // Mapping of user address to Investor struct
     Borrowers(Address),         // Mapping of user address to Borrower struct
     Pools(u32),                 // Mapping of pool_id to Pool struct
-    LpBalance(u32, Address),      // (pool_id, user) → balance
+    LpBalance(u32, Address),    // (pool_id, user) → balance
 }

@@ -15,7 +15,7 @@ pub(crate) fn get_investor(env: &Env, user: Address) -> Result<Investor, Error> 
     let key = DataKey::Investors(user);
 
     env.storage()
-        .instance()
+        .persistent()
         .get(&key)
         .ok_or(Error::InvestorNotFound)
 }
