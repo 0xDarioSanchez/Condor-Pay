@@ -155,25 +155,34 @@ fi
 #######################################
 
 echo ""
-echo "=========================================================="
+echo "=================================================================================================================================================================================================================================="
 echo "  Running full test workflow on fresh contract..."
-echo "=========================================================="
+echo "=================================================================================================================================================================================================================================="
 echo ""
 
-# Register users
-echo " ==== Register Borrower 1... ===="
+
+echo " ================ Register Borrower 1 ================"
+
 stellar contract invoke --id $CONTRACT_ID --source borrower-1 --network $NETWORK -- \
   register_as_borrower --user borrower-1 --personal_data '"Borrower 1 Data"'
 
-echo " ==== Register Investor 1... ===="
+echo " ================ Register Investor 1 ================"
+
 stellar contract invoke --id $CONTRACT_ID --source investor-1 --network $NETWORK -- \
   register_as_investor --user investor-1
 
-echo " ==== Create Pool 1... ===="
+echo " ================ Create Pool 1 ================"
+
 stellar contract invoke --id $CONTRACT_ID --source $SOURCE --network $NETWORK -- \
   create_pool --address $SOURCE --yearly_interest_rate 2000
 
-echo " ==== Create Invoice 1... ===="
+echo " ================ Invest in Pool 1 ================"
+
+stellar contract invoke --id $CONTRACT_ID --source investor-1 --network $NETWORK -- \
+  invest_in_pool --user investor-1 --pool_id 1 --amount 100000
+
+
+echo " ================ Create Invoice 1... ================"
 stellar contract invoke \
   --id $CONTRACT_ID \
   --source borrower-1 \
@@ -186,28 +195,30 @@ stellar contract invoke \
   --invoice_info '"Invoice 1"' \
   --pool_id 1
 
-# Validate invoice
-echo " ==== Validate Invoice 1... ===="
-stellar contract invoke --id $CONTRACT_ID --source $SOURCE --network $NETWORK -- \
-  validate_invoice --address $SOURCE --invoice_id 1 --validate true
 
-# Invest
-echo " ==== Invest in Pool 1... ===="
-stellar contract invoke --id $CONTRACT_ID --source investor-1 --network $NETWORK -- \
-  invest_in_pool --user investor-1 --pool_id 1 --amount 50000
+# Validate invoice
+echo " ================ Validate Invoice 1... ================"
+stellar contract invoke \
+  --id $CONTRACT_ID \
+  --source $SOURCE \
+  --network $NETWORK -- \
+  validate_invoice \
+  --address $SOURCE \
+  --invoice_id 1 \
+  --validate true
 
 
 # Claim reward
-echo " ==== Claim Reward for Investor 1... ===="
+echo " ================ Claim Reward for Investor 1... ================"
 stellar contract invoke --id $CONTRACT_ID --source investor-1 --network $NETWORK -- \
   claim_reward --user investor-1 --pool_id 1
 
 # Pay debt
-echo " ==== Pay Debt for Invoice 1... ===="
+echo " ================ Pay Debt for Invoice 1... ================"
 stellar contract invoke --id $CONTRACT_ID --source borrower-1 --network $NETWORK -- \
   pay_debt --invoice_id 1
 
-echo " ==== GET Methods... ===="
+echo " ================ GET Methods... ================"
 # Read state
 stellar contract invoke --id $CONTRACT_ID --source borrower-1 --network $NETWORK -- \
   get_borrower --user borrower-1

@@ -17,12 +17,12 @@ pub fn create_pool(env: &Env, yearly_interest_rate: i128) {
 
     let current_pool_id = env
         .storage()
-        .instance()
+        .persistent()
         .get::<_, u32>(&pool_id)
         .unwrap_or(0);
     let new_pool_id = current_pool_id + 1;
     env.storage()
-        .instance().set(&pool_id, &new_pool_id);    
+        .persistent().set(&pool_id, &new_pool_id);    
 
     let new_pool = Pool {
         pool_id: new_pool_id, //TODO: change to an auto-incremented ID if we want to have multiple pools

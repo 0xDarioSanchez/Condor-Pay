@@ -1,7 +1,7 @@
 use crate::events::event;
-use crate::methods::invoice;
+// use crate::methods::invoice;
 use crate::methods::borrower::update_borrower;
-use crate::storage::investor::{get_investor};
+// use crate::storage::investor::{get_investor};
 use crate::storage::borrower::{get_borrower};
 use crate::storage::pool;
 use crate::storage::{
@@ -10,7 +10,7 @@ use crate::storage::{
     storage::DataKey,
 };
 use crate::error::Error;
-use soroban_sdk::{Address, Env, String, panic_with_error};
+use soroban_sdk::{Address, Env, String, log, panic_with_error};
 use stellar_access::access_control::get_admin;
 
 /// Create a new invoice.
@@ -40,12 +40,12 @@ pub fn create_invoice(
 
     let current_id = env
         .storage()
-        .instance()
+        .persistent()
         .get::<_, u32>(&DataKey::InvoiceCounter)
         .unwrap_or(0);
     let new_invoice_id = current_id + 1;
     env.storage()
-        .instance()
+        .persistent()
         .set(&DataKey::InvoiceCounter, &new_invoice_id);
 
     let invoice = Invoice {
@@ -77,10 +77,6 @@ pub fn validate_invoice(
     invoice_id: u32,
     validate: bool
 ) -> InvoiceStatus {
-    // Get Admin
-    let admin = get_admin(env).unwrap();
-    // Only Admin can validate the invoice
-    admin.require_auth();
 
     // Get the invoice if exists
     let mut invoice = match get_invoice(env, invoice_id) {
@@ -88,18 +84,23 @@ pub fn validate_invoice(
         Err(_) => panic_with_error!(env, Error::InvoiceNotFound),
     };
 
+    log!(&env, "1 Validating invoice with id: {}", invoice_id);
+
     // Check if the invoice is in CREATED status
     if invoice.invoice_status != InvoiceStatus::CREATED {
         panic_with_error!(env, Error::InvalidInvoiceStatus);
     }
 
+    log!(&env, "2 Validating invoice with id: {}", invoice_id);
     if validate {
         invoice.invoice_status = InvoiceStatus::APPROVED;
         let usdc_amount = invoice.amount;
 
+    log!(&env, "3 Validating invoice with id: {}", invoice_id);
         // The USDC amount is sended to the borrower at the same moment of the validation
         fund_invoice(env, usdc_amount, invoice.creator.clone());
 
+    log!(&env, "4 Validating invoice with id: {}", invoice_id);
         // Increment the borrower's debt amount        
         let mut borrower = match get_borrower(env, invoice.creator.clone()) {
         Ok(borrower) => borrower,
@@ -108,6 +109,7 @@ pub fn validate_invoice(
         borrower.debt_amount += usdc_amount;
         update_borrower(env, invoice.creator.clone(), borrower);    
 
+    log!(&env, "5 Validating invoice with id: {}", invoice_id);
     } else {
         invoice.invoice_status = InvoiceStatus::REJECTED;
     };

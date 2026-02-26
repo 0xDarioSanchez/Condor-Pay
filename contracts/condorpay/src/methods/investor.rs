@@ -3,7 +3,7 @@ use crate::storage::investor::{Investor, set_investor, get_investor};
 use crate::error::Error;
 use crate::methods::math::calculate_lp_tokens;
 use crate::storage::storage::DataKey;
-use crate::storage::pool::get_pool;
+use crate::storage::pool::{get_pool, set_pool};
 
 pub fn register_as_investor(env: Env, user: Address) -> Result<(), Error> {
     // Require authentication from the user
@@ -29,6 +29,16 @@ pub fn invest_in_pool(env: &Env, user: Address, pool_id: u32, amount: i128) -> R
         Ok(investor) => investor,
         Err(_) => return Err(Error::InvestorNotFound),
     };
+
+    let mut pool = match get_pool(env, pool_id) {
+        Ok(pool) => pool,
+        Err(_) => return Err(Error::PoolNotFound),
+    }; 
+
+    pool.usdc_balance += amount;
+    pool.lp_total_balance += calculate_lp_tokens(amount);
+    // Update the pool with the new balances
+    set_pool(env, pool_id, pool);    
 
     // Business logic for investing in pool would go here
     // For now, just update LP balance as before

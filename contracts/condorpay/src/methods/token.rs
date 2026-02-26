@@ -6,14 +6,14 @@ use crate::error::Error;
 pub(crate) fn set_token(env: &Env, token: &Address) {
     let key = DataKey::Token;
 
-    env.storage().instance().set(&key, token);
+    env.storage().persistent().set(&key, token);
 }
 
 pub(crate) fn get_token(env: &Env) -> Result<Address, Error> {
     let key = DataKey::Token;
 
     env.storage()
-        .instance()
+        .persistent()
         .get(&key)
         .ok_or(Error::ContractNotInitialized)
 }
